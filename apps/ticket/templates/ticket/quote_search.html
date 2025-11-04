@@ -1,0 +1,309 @@
+{# templates/ticket/quote_search.html #}
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>即點即算：機票報價搜尋</title>
+  <!-- 開發用 Tailwind CDN；若改用本機編譯，請移除這行改引入你的 CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- 頁首 -->
+  <header class="border-b bg-white">
+    <div class="mx-auto max-w-7xl px-4 py-6">
+      <h1 class="text-2xl font-bold">即點即算：機票報價搜尋</h1>
+      <p class="mt-1 text-sm text-gray-600">想飛就飛！輸入出發地、艙等與日期，即刻掌握最低票價與下訂建議。</p>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-7xl px-4 py-6">
+    <!-- 篩選表單（GET） -->
+    <form id="searchForm" method="get" class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <!-- 關鍵字 -->
+      <input
+        type="text" name="q" value="{{ current.q }}"
+        placeholder="關鍵字（航班/城市/機場）"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+
+      <!-- 出發機場(IATA) -->
+      <select name="dep_airport"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">出發機場(IATA)</option>
+        {% for code in dep_airport_choices %}
+          <option value="{{ code }}" {% if current.dep_airport == code %}selected{% endif %}>{{ code }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- 抵達機場(IATA) -->
+      <select name="arr_airport"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">抵達機場(IATA)</option>
+        {% for code in arr_airport_choices %}
+          <option value="{{ code }}" {% if current.arr_airport == code %}selected{% endif %}>{{ code }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- 出發城市 -->
+      <select name="dep_city"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">出發城市</option>
+        {% for c in dep_city_choices %}
+          <option value="{{ c }}" {% if current.dep_city == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- 抵達城市 -->
+      <select name="arr_city"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">抵達城市</option>
+        {% for c in arr_city_choices %}
+          <option value="{{ c }}" {% if current.arr_city == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- 航空公司 -->
+      <select name="airline"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">航空公司</option>
+        {% for a in airline_choices %}
+          <option value="{{ a }}" {% if current.airline == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- 艙等 -->
+      <select name="cabin"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">艙等</option>
+        {% for c in cabin_choices %}
+          <option value="{{ c }}" {% if current.cabin == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- 出發日期（值統一用 YYYY-MM-DD） -->
+      <select name="dep_date"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">出發日期</option>
+        {% for d in date_choices %}
+          {% with d_str=d|date:"Y-m-d" %}
+            <option value="{{ d_str }}" {% if current.dep_date == d_str %}selected{% endif %}>{{ d_str }}</option>
+          {% endwith %}
+        {% endfor %}
+      </select>
+
+      <!-- 最低價 -->
+      <input
+        type="number" inputmode="numeric" name="min_price" value="{{ current.min_price }}"
+        placeholder="最低價（{{ price_min_suggest }} 起）"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+
+      <!-- 最高價 -->
+      <input
+        type="number" inputmode="numeric" name="max_price" value="{{ current.max_price }}"
+        placeholder="最高價（建議 ≤ {{ price_max_suggest }}）"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+
+      <!-- 排序 -->
+      <select name="order_by"
+        class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="depDate"  {% if current.order_by == 'depDate' %}selected{% endif %}>出發日 ↑</option>
+        <option value="-depDate" {% if current.order_by == '-depDate' %}selected{% endif %}>出發日 ↓</option>
+        <option value="price"    {% if current.order_by == 'price' %}selected{% endif %}>價格 ↑</option>
+        <option value="-price"   {% if current.order_by == '-price' %}selected{% endif %}>價格 ↓</option>
+        <option value="recPrice" {% if current.order_by == 'recPrice' %}selected{% endif %}>建議價 ↑</option>
+        <option value="-recPrice"{% if current.order_by == '-recPrice' %}selected{% endif %}>建議價 ↓</option>
+      </select>
+
+      <!-- 只顯示推薦（當前價 < 建議價） -->
+      <label class="col-span-full inline-flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox" name="recommend_only" value="1"
+          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          {% if current.recommend_only %}checked{% endif %}
+        />
+        只顯示推薦（當前價 < 建議價）
+      </label>
+
+      <!-- 動作 -->
+      <div class="col-span-full flex items-center gap-2">
+        <button
+          type="submit"
+          class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >搜尋</button>
+
+        <a
+          href="{% url 'ticket:quote_search' %}"
+          class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
+        >清除條件</a>
+
+        <span class="ml-auto text-sm text-gray-600">共
+          <span class="font-semibold text-gray-900">{{ total_count }}</span> 筆結果
+        </span>
+      </div>
+    </form>
+
+    <!-- 結果表格 -->
+    <div class="overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50 sticky top-0 z-10">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">出發日</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">航班</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">航點</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">艙等</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">價格</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">建議價</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">建議</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">航空公司</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for p in page_obj %}
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 whitespace-nowrap text-sm">{{ p.depDate|date:"Y-m-d" }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{{ p.ticket.flightCode }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm">
+                <span class="inline-flex items-center gap-1">
+                  <span class="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{{ p.ticket.depAirportCode }}</span>
+                  <span class="text-gray-400">→</span>
+                  <span class="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{{ p.ticket.arrAirportCode }}</span>
+                </span>
+                <div class="mt-0.5 text-xs text-gray-500">
+                  {{ p.ticket.depCity }} → {{ p.ticket.arrCity }}
+                </div>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm">{{ p.Class }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-emerald-700">{{ p.price }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ p.recPrice }}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm">
+                {% if p.price < p.recPrice %}
+                  <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                    推薦下訂
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
+                    觀望
+                  </span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm">{{ p.ticket.airline }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">沒有符合條件的資料</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 分頁（Tailwind；保留查詢參數） -->
+    <nav class="mt-6 flex items-center justify-center" aria-label="Pagination">
+      <ul class="inline-flex items-center gap-1">
+        <!-- 上一頁 -->
+        {% if page_obj.has_previous %}
+          <li>
+            <a
+              class="inline-flex select-none items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+              href="?{% for k,v in current.items %}{% if k != 'page' and v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+              aria-label="上一頁"
+            >‹</a>
+          </li>
+        {% else %}
+          <li>
+            <span class="inline-flex select-none items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400" aria-disabled="true">‹</span>
+          </li>
+        {% endif %}
+
+        <!-- 第一頁 -->
+        {% if page_obj.number != 1 %}
+          <li>
+            <a
+              class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+              href="?{% for k,v in current.items %}{% if k != 'page' and v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page=1"
+            >1</a>
+          </li>
+        {% endif %}
+
+        <!-- 前省略號 -->
+        {% if page_obj.number|add:'-2' > 2 %}
+          <li><span class="px-2 text-gray-400">…</span></li>
+        {% endif %}
+
+        <!-- 當前頁前一頁 -->
+        {% if page_obj.number|add:'-1' >= 2 %}
+          <li>
+            <a
+              class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+              href="?{% for k,v in current.items %}{% if k != 'page' and v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.number|add:'-1' }}"
+            >{{ page_obj.number|add:'-1' }}</a>
+          </li>
+        {% endif %}
+
+        <!-- 當前頁 -->
+        <li>
+          <span class="inline-flex items-center rounded-md border border-blue-500 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700" aria-current="page">
+            {{ page_obj.number }}
+          </span>
+        </li>
+
+        <!-- 當前頁後一頁 -->
+        {% if page_obj.number|add:'1' <= page_obj.paginator.num_pages|add:'-1' %}
+          <li>
+            <a
+              class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+              href="?{% for k,v in current.items %}{% if k != 'page' and v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.number|add:'1' }}"
+            >{{ page_obj.number|add:'1' }}</a>
+          </li>
+        {% endif %}
+
+        <!-- 後省略號 -->
+        {% if page_obj.number|add:'2' < page_obj.paginator.num_pages %}
+          <li><span class="px-2 text-gray-400">…</span></li>
+        {% endif %}
+
+        <!-- 最後一頁 -->
+        {% if page_obj.number != page_obj.paginator.num_pages %}
+          <li>
+            <a
+              class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+              href="?{% for k,v in current.items %}{% if k != 'page' and v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}"
+            >{{ page_obj.paginator.num_pages }}</a>
+          </li>
+        {% endif %}
+
+        <!-- 下一頁 -->
+        {% if page_obj.has_next %}
+          <li>
+            <a
+              class="inline-flex select-none items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50"
+              href="?{% for k,v in current.items %}{% if k != 'page' and v %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+              aria-label="下一頁"
+            >›</a>
+          </li>
+        {% else %}
+          <li>
+            <span class="inline-flex select-none items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-400" aria-disabled="true">›</span>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </main>
+
+  <!-- 頁腳 -->
+  <footer class="mt-10 border-t bg-white">
+    <div class="mx-auto max-w-7xl px-4 py-6 text-center text-xs text-gray-500">
+      © {% now "Y" %} Ticket Quotes · Django + Tailwind
+    </div>
+  </footer>
+
+  <!-- 可選：部分欄位變更就自動提交 -->
+  <script>
+    document.querySelectorAll('#searchForm select, #searchForm input[name=min_price], #searchForm input[name=max_price], #searchForm input[name=recommend_only]')
+      .forEach(el => el.addEventListener('change', () => document.getElementById('searchForm').submit()));
+  </script>
+</body>
+</html>
